@@ -1,55 +1,77 @@
+import pandas as pd
 import streamlit as st
+
+from src.profiling import get_column_info, get_duplicate_count, get_shape
 
 st.set_page_config(page_title="InsightLite", page_icon="📊", layout="centered")
 
 st.title("📊 InsightLite")
-st.write("A lightweight data profiling assistant for data scientists.")
 
-st.divider()
+uploaded_file = st.file_uploader("Upload a CSV file", type="csv")
 
-st.subheader("What is InsightLite?")
-st.write(
-    "InsightLite helps you quickly understand a new dataset. "
-    "Load your data, review its quality, and explore key insights "
-    "in just a few steps — no setup required."
-)
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
 
-st.subheader("How it works")
+    st.subheader("Preview")
+    st.dataframe(df.head())
 
-st.markdown(
-    """
-    <style>
-    .step-card {
-        background-color: #ffffff;
-        border: 1px solid #eaeaea;
-        border-radius: 12px;
-        padding: 20px;
-        height: 100%;
-    }
-    .step-icon { font-size: 22px; margin-bottom: 8px; }
-    .step-title { font-weight: 600; font-size: 17px; margin-bottom: 6px; }
-    .step-desc { color: #6b7280; font-size: 14px; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+    row_count, column_count = get_shape(df)
+    st.write(f"**Rows:** {row_count} &nbsp; **Columns:** {column_count}")
 
-steps = [
-    ("📤", "Load data", "Bring in a dataset to get started."),
-    ("📋", "Review quality", "Check for missing values and inconsistencies."),
-    ("📊", "Explore insights", "Understand trends and patterns at a glance."),
-]
+    st.subheader("Columns")
+    st.dataframe(pd.DataFrame(get_column_info(df)))
 
-cols = st.columns(3)
-for col, (icon, title, desc) in zip(cols, steps):
-    with col:
-        st.markdown(
-            f"""
-            <div class="step-card">
-                <div class="step-icon">{icon}</div>
-                <div class="step-title">{title}</div>
-                <div class="step-desc">{desc}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    duplicate_count = get_duplicate_count(df)
+    st.write(f"**Duplicate rows:** {duplicate_count}")
+
+else:
+    st.write("A lightweight data profiling assistant for data scientists.")
+
+    st.divider()
+
+    st.subheader("What is InsightLite?")
+    st.write(
+        "InsightLite helps you quickly understand a new dataset. "
+        "Load your data, review its quality, and explore key insights "
+        "in just a few steps — no setup required."
+    )
+
+    st.subheader("How it works")
+
+    st.markdown(
+        """
+        <style>
+        .step-card {
+            background-color: #ffffff;
+            border: 1px solid #eaeaea;
+            border-radius: 12px;
+            padding: 20px;
+            height: 100%;
+        }
+        .step-icon { font-size: 22px; margin-bottom: 8px; }
+        .step-title { font-weight: 600; font-size: 17px; margin-bottom: 6px; }
+        .step-desc { color: #6b7280; font-size: 14px; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    steps = [
+        ("📤", "Load data", "Bring in a dataset to get started."),
+        ("📋", "Review quality", "Check for missing values and inconsistencies."),
+        ("📊", "Explore insights", "Understand trends and patterns at a glance."),
+    ]
+
+    cols = st.columns(3)
+    for col, (icon, title, desc) in zip(cols, steps):
+        with col:
+            st.markdown(
+                f"""
+                <div class="step-card">
+                    <div class="step-icon">{icon}</div>
+                    <div class="step-title">{title}</div>
+                    <div class="step-desc">{desc}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
