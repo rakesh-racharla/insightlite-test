@@ -7,9 +7,30 @@ from src.profiling import get_column_info, get_duplicate_count, get_shape
 
 st.set_page_config(page_title="InsightLite", page_icon="📊", layout="centered")
 
+
+def show_quality_message(count: int, issue_label: str, clean_label: str) -> None:
+    """Show a warning if count > 0, otherwise a success message."""
+    if count > 0:
+        st.warning(f"⚠️ {issue_label.format(count=f'{count:,}')}")
+    else:
+        st.success(f"✅ {clean_label}")
+
+
 st.title("📊 InsightLite")
 
-uploaded_file = st.file_uploader("Upload a CSV file", type="csv")
+with st.sidebar:
+    st.header("About InsightLite")
+    st.write(
+        "InsightLite is a quick, no-setup way to sanity-check a CSV before "
+        "you dig in — see its shape, spot missing or duplicate data, and "
+        "preview how one numeric column is distributed."
+    )
+
+uploaded_file = st.file_uploader(
+    "Upload a CSV file",
+    type="csv",
+    help="Upload a CSV file from your computer. Only .csv files are supported.",
+)
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
@@ -17,14 +38,32 @@ if uploaded_file is not None:
     st.subheader("Preview")
     st.dataframe(df.head())
 
+    st.subheader("At a glance")
+
     row_count, column_count = get_shape(df)
-    st.write(f"**Rows:** {row_count} &nbsp; **Columns:** {column_count}")
+    column_info = get_column_info(df)
+    missing_total = sum(col["missing_count"] for col in column_info)
+    duplicate_count = get_duplicate_count(df)
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Rows", f"{row_count:,}")
+    col2.metric("Columns", f"{column_count:,}")
+    col3.metric("Missing values", f"{missing_total:,}")
+    col4.metric("Duplicate rows", f"{duplicate_count:,}")
+
+    show_quality_message(
+        missing_total,
+        issue_label="Found {count} missing value(s). Consider reviewing before analysis.",
+        clean_label="No missing values found.",
+    )
+    show_quality_message(
+        duplicate_count,
+        issue_label="Found {count} duplicate row(s). Consider removing them before analysis.",
+        clean_label="No duplicate rows found.",
+    )
 
     st.subheader("Columns")
-    st.dataframe(pd.DataFrame(get_column_info(df)))
-
-    duplicate_count = get_duplicate_count(df)
-    st.write(f"**Duplicate rows:** {duplicate_count}")
+    st.dataframe(pd.DataFrame(column_info))
 
     st.subheader("Charts")
 
@@ -33,7 +72,11 @@ if uploaded_file is not None:
     if not numeric_columns:
         st.write("No numeric columns available to chart.")
     else:
-        selected_column = st.selectbox("Choose a numeric column to visualize", numeric_columns)
+        selected_column = st.selectbox(
+            "Choose a numeric column to visualize",
+            numeric_columns,
+            help="Only numeric columns can be charted as a histogram.",
+        )
         values = get_histogram_data(df, selected_column)
 
         if values.empty:
@@ -42,55 +85,30 @@ if uploaded_file is not None:
             fig = build_histogram_figure(values, selected_column)
             st.pyplot(fig)
             plt.close(fig)
+            st.caption(
+                "This histogram shows how values in this column are distributed — "
+                "tall bars mean more common values, gaps or outliers stand out visually."
+            )
 
 else:
-    st.write("A lightweight data profiling assistant for data scientists.")
+    st.info(
+        "📊 A lightweight data profiling assistant for data scientists. "
+        "Upload a CSV to preview your data, check its quality, and explore "
+        "a quick chart — no setup required."
+    )
 
     st.divider()
 
-    st.subheader("What is InsightLite?")
-    st.write(
-        "InsightLite helps you quickly understand a new dataset. "
-        "Load your data, review its quality, and explore key insights "
-        "in just a few steps — no setup required."
-    )
-
     st.subheader("How it works")
-
-    st.markdown(
-        """
-        <style>
-        .step-card {
-            background-color: #ffffff;
-            border: 1px solid #eaeaea;
-            border-radius: 12px;
-            padding: 20px;
-            height: 100%;
-        }
-        .step-icon { font-size: 22px; margin-bottom: 8px; }
-        .step-title { font-weight: 600; font-size: 17px; margin-bottom: 6px; }
-        .step-desc { color: #6b7280; font-size: 14px; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
 
     steps = [
         ("📤", "Load data", "Bring in a dataset to get started."),
-        ("📋", "Review quality", "Check for missing values and inconsistencies."),
+        ("📋", "Review quality", "Check for missing values and duplicates."),
         ("📊", "Explore insights", "Understand trends and patterns at a glance."),
     ]
 
     cols = st.columns(3)
     for col, (icon, title, desc) in zip(cols, steps):
         with col:
-            st.markdown(
-                f"""
-                <div class="step-card">
-                    <div class="step-icon">{icon}</div>
-                    <div class="step-title">{title}</div>
-                    <div class="step-desc">{desc}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            st.subheader(f"{icon} {title}")
+            st.caption(desc)
