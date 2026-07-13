@@ -1,6 +1,8 @@
+import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
+from src.charts import build_histogram_figure, get_histogram_data, is_numeric_column
 from src.profiling import get_column_info, get_duplicate_count, get_shape
 
 st.set_page_config(page_title="InsightLite", page_icon="📊", layout="centered")
@@ -23,6 +25,23 @@ if uploaded_file is not None:
 
     duplicate_count = get_duplicate_count(df)
     st.write(f"**Duplicate rows:** {duplicate_count}")
+
+    st.subheader("Charts")
+
+    numeric_columns = [col for col in df.columns if is_numeric_column(df, col)]
+
+    if not numeric_columns:
+        st.write("No numeric columns available to chart.")
+    else:
+        selected_column = st.selectbox("Choose a numeric column to visualize", numeric_columns)
+        values = get_histogram_data(df, selected_column)
+
+        if values.empty:
+            st.write("No data available to chart for this column.")
+        else:
+            fig = build_histogram_figure(values, selected_column)
+            st.pyplot(fig)
+            plt.close(fig)
 
 else:
     st.write("A lightweight data profiling assistant for data scientists.")
